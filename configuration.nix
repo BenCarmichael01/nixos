@@ -10,11 +10,13 @@
    src = builtins.fetchTarball "https://github.com/hyprwm/Hyprland/archive/master.tar.gz";
   }).defaultNix;
 
+
 in {
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./nvidia.nix
+      ./home-manager.nix
     ];
 
   # Use the systemd-boot EFI boot loader.
@@ -28,6 +30,8 @@ in {
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
   networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
 
+  nixpkgs.config.allowUnfree = true; 
+  
   nix.settings = {
     substituters = ["https://hyprland.cachix.org"];
     trusted-public-keys = ["hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="];
@@ -50,15 +54,18 @@ in {
 
   # Enable the X11 windowing system.
   services.xserver.enable = true;
-
-
-  services.xserver.displayManager.lightdm = {
-    enable = true;
-    extraSeatDefaults = "session-wrapper=";
-    greeters.slick = {
-      enable = true;
-    };
+  
+  services.xserver.displayManager.gdm = {
+	enable = true;
+	wayland = true;
   };
+  #services.xserver.displayManager.lightdm = {
+  #  enable = true;
+  #  # extraSeatDefaults = "session-wrapper=";
+  #  greeters.slick = {
+  #    enable = true;
+  #  };
+  #};
 
   # Configure keymap in X11
   services.xserver.layout = "gb";
@@ -82,43 +89,58 @@ in {
      description = "Ben Carmichael";
      initialPassword = "password";
      packages = with pkgs; [
-       firefox
-       tree
-       kitty
      ];
    };
+
+
+#  environment.etc."lightdm/lightdm.conf".text = lib.mkForce ''
+#	[LightDM]
+#	greeter-user = lightdm
+#	greeters-directory = /nix/store/4w3cqs6mwvj0gs584l9phjxmx2yrqxq1-lightdm-gtk-greeter-xgreeters/
+#
+#	sessions-directory = /nix/store/m2sz06x9y3qfami9dr6ldmm4d67v9y61-desktops/share/xsessions/:/nix/store/m2sz06x9y3qfami9dr6ldmm4d67v9y61-desktops/share/wayland-sessions/
+#
+#	[Seat:*]
+#	# xserver-command = /nix/store/2bvc180xi4kzbfm4c5dhvwcm3cka905g-xserver-wrapper    
+#	# session-wrapper = /nix/store/ivav73slg6i8an1if0ghrd51c6h32bn2-xsession-wrapper
+#	greeter-session = lightdm-slick-greeter
+#
+#  '';
+#
+
+  services.flatpak.enable = true;
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
    environment.systemPackages = with pkgs; [
-     xdg-desktop-portal-hyprland
-     neovim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-     wget
-     git
-     libadwaita
-     zsh
-     rclone # onedrive syncing
-     ranger # term file manager
-     gh
-     waybar # status bar
-    wofi
-    hyprpaper # wallpaper
+    # flatpak
+    # xdg-desktop-portal-hyprland
+    # wget
+    # git
+    # libadwaita
+    #  zsh
+    # rclone # onedrive syncing
+    # ranger # term file manager
+    # gh
+    # waybar # status bar
+    # wofi
+    # hyprpaper # wallpaper
     # hyprshot # screenshots
-    dunst # notifs
-    swaylock # lock screen
-    swayidle # lock screen on idle
-    networkmanagerapplet # network in waybar tray
-    blueman # bluetooth in waybar tray
-    # blueman-nautilus
-    brightnessctl
-    font-awesome
-    udiskie # usb drive auto-mount 
-    distrobox
-    # greetd
+    # dunst # notifs
+    # swaylock # lock screen
+    # swayidle # lock screen on idle
+    # networkmanagerapplet # network in waybar tray
+    # blueman # bluetooth in waybar tray
+    # # blueman-nautilus
+    # brightnessctl
+    # font-awesome
+    # udiskie # usb drive auto-mount 
+    # distrobox
+    # # greetd
     # gtkgreet
-    lightdm
-    lightdm-slick-greeter
-    copyq
+    #lightdm
+    #lightdm-slick-greeter
+    # copyq
    ];
   
   programs.hyprland = {
@@ -133,8 +155,12 @@ in {
   
   xdg.portal = {
     enable = true;
-    extraPortals = [ pkgs.xdg-desktop-portal-gtk pkgs.xdg-desktop-portal-hyprland ];
+    #extraPortals = [ pkgs.xdg-desktop-portal-gtk pkgs.xdg-desktop-portal-hyprland ];
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   };
+
+  security.pam.services.swaylock = {};
+
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
   # programs.mtr.enable = true;
@@ -165,7 +191,7 @@ in {
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "23.05"; # Did you read the comment?
+  system.stateVersion = "23.11"; # Did you read the comment?
 
 }
 
