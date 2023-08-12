@@ -40,9 +40,11 @@ in {
     ];
   wayland.windowManager.hyprland = {
     enable = true;
-  extraConfig = ''
+     extraConfig = ''
       bind = SUPER, Q, exec, kitty
     '';
+    xwayland.hidpi = true;
+};
     home.stateVersion = "23.11";
     programs.home-manager.enable = true;
   };
