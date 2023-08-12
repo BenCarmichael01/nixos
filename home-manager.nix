@@ -1,8 +1,14 @@
 {config, lib, pkgs, ...}: let
 	home-manager = builtins.fetchTarball "https://github.com/nix-community/home-manager/archive/master.tar.gz";
+        
+        flake-compat = builtins.fetchTarball "https://github.com/edolstra/flake-compat/archive/master.tar.gz";
+	hyprland = (import flake-compat {
+	  src = builtins.fetchTarball "https://github.com/hyprwm/Hyprland/archive/master.tar.gz";
+ 	 }).defaultNix;
 in {
   imports = [
     (import "${home-manager}/nixos")
+    hyprland.homeManagerModules.default
   ];
  # nixpkgs.config.allowUnfree = true;
   home-manager.users.ben = {pkgs, ...}: {
@@ -32,7 +38,11 @@ in {
       git
       libadwaita
     ];
-
+  wayland.windowManager.hyprland = {
+    enable = true;
+  extraConfig = ''
+      bind = SUPER, Q, exec, kitty
+    '';
     home.stateVersion = "23.11";
     programs.home-manager.enable = true;
   };

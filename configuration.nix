@@ -2,16 +2,8 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running `nixos-help`).
 
-{ config, lib, pkgs, ... }: let
- 
-  flake-compat = builtins.fetchTarball "https://github.com/edolstra/flake-compat/archive/master.tar.gz";
-
-  hyprland-flake = (import flake-compat {
-   src = builtins.fetchTarball "https://github.com/hyprwm/Hyprland/archive/master.tar.gz";
-  }).defaultNix;
-
-
-in {
+{ config, lib, pkgs, ... }: 
+{
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
@@ -32,11 +24,6 @@ in {
 
   nixpkgs.config.allowUnfree = true; 
   
-  nix.settings = {
-    substituters = ["https://hyprland.cachix.org"];
-    trusted-public-keys = ["hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="];
-  };
-
   # Set your time zone.
    time.timeZone = "Europe/London";
 
@@ -143,15 +130,15 @@ in {
     # copyq
    ];
   
-  programs.hyprland = {
-	enable = true;
-	package = hyprland-flake.packages.${pkgs.system}.hyprland;
-	nvidiaPatches = true;
-	xwayland = {
-		enable = true;
-		hidpi = true;
-		};
-  };
+#  programs.hyprland = {
+#	enable = true;
+#	package = hyprland-flake.packages.${pkgs.system}.hyprland;
+#	nvidiaPatches = true;
+#	xwayland = {
+#		enable = true;
+#		hidpi = true;
+#		};
+#  };
   
   xdg.portal = {
     enable = true;
