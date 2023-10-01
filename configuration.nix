@@ -2,151 +2,195 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running `nixos-help`).
 
-{ config, lib, pkgs, ... }: 
+{ config, lib, pkgs, ... }:
+
 {
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      ./nvidia.nix
-      ./home-manager.nix
-    ];
+      ]:
+  
+  fileSystems = {
+    "/".options = [ "compress=zstd" ];
+    "/home".options = [ "compress=zstd" ];
+    "/nix".options = [ "compress=zstd" "noatime" ];
+   #  "/swap".options = [ "noatime" ];
+  };
 
+
+  nixpkgs.config.allowUnfree = true;
+  # Windows time compat
+  time.hardwareClockInLocalTime = true;
+  nix = {
+    gc = {
+      automatic = true;
+      dates = "weekly";
+      options = "--delete-older-than 14d";
+    };
+    settings.auto-optimise-store = true;
+    # free up to 1GiB from store when less that 100MiB left
+    extraOptions = ''
+      min-free = ${toString (100 * 1024 * 1024)}
+      max-free = ${toString (1024 * 1024 * 1024)}
+    '';
+  };
+  
   # Use the systemd-boot EFI boot loader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
+  # boot.loader.systemd-boot.enable = true;
+  # boot.loader.systemd-boot.configurationLimit = 10;
+  # boot.loader.efi.canTouchEfiVariables = true;
+  
+  boot = {
+    loader.grub = {
+      enable = true;
+      device = "nodev";
+      efiSupport = true;
+      useOSProber = true;
+      theme = pkgs.nixos-grub2-theme;
+    };
+    kernelParams = ["quiet" "splash"];
+    plymouth.enable = true;
+  };
 
-  boot.kernelParams = ["quiet"];
-
-  # networking.hostName = "nixos"; # Define your hostname.
-  # Pick only one of the below networking options.
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  networking.hostName = "benlaptopn"; # Define your hostname.
   networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
 
-  nixpkgs.config.allowUnfree = true; 
-  
+
   # Set your time zone.
-   time.timeZone = "Europe/London";
+  time.timeZone = "Europe/London";
 
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
+  console = {
+    font = "iso01-12x22";
+    # keyMap = "gb";
+    useXkbConfig = true; # use xkbOptions in tty.
+   };
 
-  # Select internationalisation properties.
-  # i18n.defaultLocale = "en_US.UTF-8";
-  # console = {
-  #   font = "Lat2-Terminus16";
-  #   keyMap = "us";
-  #   useXkbConfig = true; # use xkbOptions in tty.
-  # };
-
-  # Enable the X11 windowing system.
-  services.xserver.enable = true;
-  
-  services.xserver.displayManager.gdm = {
-	enable = true;
-	wayland = true;
-  };
-  #services.xserver.displayManager.lightdm = {
-  #  enable = true;
-  #  # extraSeatDefaults = "session-wrapper=";
-  #  greeters.slick = {
-  #    enable = true;
-  #  };
-  #};
-
-  # Configure keymap in X11
-  services.xserver.layout = "gb";
-  # services.xserver.xkbOptions = "eurosign:e,caps:escape";
 
   # Enable CUPS to print documents.
-  # services.printing.enable = true;
+  services.printing.enable = true;
 
   # Enable sound.
   sound.enable = true;
   # hardware.pulseaudio.enable = true;
   services.pipewire.enable = true;
 
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
+  services.dbus.enable = true;
+  services.flatpak.enable = true;
+
+  services.xserver = {
+    enable = true;
+    layout = "gb";
+    # Enable touchpad support (enabled default in most desktopManager).
+    libinput.enable = true;
+    displayManager.lightdm = {
+      enable = true;
+      greeters.slick.enable = true;
+      greeters.slick.theme.name = "Catppuccin-Mocha-Standard-Blue-Dark";
+      greeters.slick.theme.package = pkgs.catppuccin-gtk.override {
+        accents = [ "blue" ];
+        #size = "compact";
+        tweaks = [ "rimless" ];
+        variant = "mocha";
+      };
+      greeters.slick.cursorTheme.name = "Phinger Cursors";
+      greeters.slick.extraConfig = ''
+         enable-hidpi=on
+      '';
+      extraConfig = ''
+         minimum-vt=1
+	 #logind-check-graphical=true
+      '';
+    };
+  };
+
+  systemd.services."display-manager".preStart = "sleep 5";
+  systemd.user = {
+    services.polkit-gnome-authentication-agent-1 = {
+      description = "polkit-gnome-authentication-agent-1";
+      wantedBy = [ "graphical-session.target" ];
+      wants = [ "graphical-session.target" ];
+      after = [ "graphical-session.target" ];
+      serviceConfig = {
+          Type = "simple";
+          ExecStart = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
+          Restart = "no";
+          RestartSec = 1;
+          TimeoutStopSec = 10;
+      };
+    };
+  };
+
+
+  security = {
+    polkit.enable = true;
+    pam.services.swaylock = {};
+  };
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.ben = {
+   users.users.ben = {
      isNormalUser = true;
-     extraGroups = [ "wheel" "input" ]; # Enable ‘sudo’ for the user.
+     extraGroups = [ "wheel" "input" "networkmanager" ]; # Enable ‘sudo’ for the user.
      description = "Ben Carmichael";
      initialPassword = "password";
+     shell = pkgs.zsh;
      packages = with pkgs; [
      ];
    };
 
 
-#  environment.etc."lightdm/lightdm.conf".text = lib.mkForce ''
-#	[LightDM]
-#	greeter-user = lightdm
-#	greeters-directory = /nix/store/4w3cqs6mwvj0gs584l9phjxmx2yrqxq1-lightdm-gtk-greeter-xgreeters/
-#
-#	sessions-directory = /nix/store/m2sz06x9y3qfami9dr6ldmm4d67v9y61-desktops/share/xsessions/:/nix/store/m2sz06x9y3qfami9dr6ldmm4d67v9y61-desktops/share/wayland-sessions/
-#
-#	[Seat:*]
-#	# xserver-command = /nix/store/2bvc180xi4kzbfm4c5dhvwcm3cka905g-xserver-wrapper    
-#	# session-wrapper = /nix/store/ivav73slg6i8an1if0ghrd51c6h32bn2-xsession-wrapper
-#	greeter-session = lightdm-slick-greeter
-#
-#  '';
-#
-
-  services.flatpak.enable = true;
-
   # List packages installed in system profile. To search, run:
   # $ nix search wget
    environment.systemPackages = with pkgs; [
-    # flatpak
-    # xdg-desktop-portal-hyprland
-    # wget
-    # git
-    # libadwaita
-    #  zsh
-    # rclone # onedrive syncing
-    # ranger # term file manager
-    # gh
-    # waybar # status bar
-    # wofi
-    # hyprpaper # wallpaper
-    # hyprshot # screenshots
-    # dunst # notifs
-    # swaylock # lock screen
-    # swayidle # lock screen on idle
-    # networkmanagerapplet # network in waybar tray
-    # blueman # bluetooth in waybar tray
-    # # blueman-nautilus
-    # brightnessctl
-    # font-awesome
-    # udiskie # usb drive auto-mount 
-    # distrobox
-    # # greetd
-    # gtkgreet
-    #lightdm
-    #lightdm-slick-greeter
-    # copyq
+     polkit_gnome
+     xorg.xhost # for polkit apps
+     at-spi2-core
+     neovim 
+     wget
+     kitty
+     rclone
+     ranger
+     gh
+     git
+     eza
+     acpica-tools
+     p7zip
+     # Hyprland stuff
+     waybar
+     wofi
+     hyprpaper
+     # hyprshot
+     swaylock-effects
+     swayidle
+     networkmanagerapplet
+     blueman
+     brightnessctl
+     font-awesome
+     udiskie
+     distrobox
+     copyq
+     nwg-look
+     swaynotificationcenter
+     gnome.gnome-software
+     cinnamon.nemo
+     catppuccin-gtk
+     phinger-cursors
+     gtk3
+     qt6.qtwayland # cursors?
+     libsForQt5.qt5.qtwayland
+     glib # gsettings for nwg-look
+     gsettings-desktop-schemas
+     less # pager
+     firefox
+     gparted
+     gnome-multi-writer
+     ntfs3g
+     xsettingsd
    ];
-  
-#  programs.hyprland = {
-#	enable = true;
-#	package = hyprland-flake.packages.${pkgs.system}.hyprland;
-#	nvidiaPatches = true;
-#	xwayland = {
-#		enable = true;
-#		hidpi = true;
-#		};
-#  };
-  
-  xdg.portal = {
-    enable = true;
-    #extraPortals = [ pkgs.xdg-desktop-portal-gtk pkgs.xdg-desktop-portal-hyprland ];
-    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-  };
 
-  security.pam.services.swaylock = {};
+  programs = {
+    hyprland.enable = true;
+    zsh.enable = true;
+};
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
@@ -170,7 +214,7 @@
   # Copy the NixOS configuration file and link it from the resulting system
   # (/run/current-system/configuration.nix). This is useful in case you
   # accidentally delete configuration.nix.
-  # system.copySystemConfiguration = true;
+  system.copySystemConfiguration = true;
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
